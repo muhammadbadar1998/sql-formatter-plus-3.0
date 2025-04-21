@@ -1,53 +1,87 @@
-// 1. Import VS Code API types for constructing text edits:
-import { TextEdit, Range, Position } from 'vscode';
+// src/sqlFormatter.ts
 
-// 2. Import your array of SQL keywords from the WordList file:
+/**
+ * sqlFormatter module
+ * Provides document formatting logic for T-SQL,
+ * including keyword casing and handling quoted segments (single and double quotes).
+ */
+
+import { TextEdit, Range, Position } from 'vscode';
 import { sqlKeywords } from './WordList';
 
-// 3. Export a function that takes the full document text and returns an array of TextEdits:
+/**
+ * Format the given SQL text, uppercasing keywords, splitting quoted strings
+ * into individually quoted words, and preserving quoted literals.
+ *
+ * @param text - the entire SQL document or selection text
+ * @param uppercase - whether to uppercase SQL keywords (default: true)
+ * @param indentSize - number of spaces per indent level (currently unused)
+ * @returns an array of TextEdit objects describing replacements to apply
+ */
 export function formatDocument(
-  text: string,              // the entire SQL document as one string
-  uppercase: boolean = true, // whether to uppercase keywords (defaults to true)
-  indentSize: number = 2     // spaces per indent (unused in this simple example)
+  text: string,
+  uppercase: boolean = true,
+  indentSize: number = 2
 ): TextEdit[] {
-  // 4. Prepare an array to collect all the edits we’ll return:
+  // 1. Prepare an array to collect all edits
   const edits: TextEdit[] = [];
 
-  // 5. Split the document into lines (handles both LF and CRLF):
+  // 2. Split document into lines (supports LF and CRLF)
   const lines = text.split(/\r?\n/);
 
-  // 6. Iterate over each line by index:
+  // 3. Iterate through each line
   for (let i = 0; i < lines.length; i++) {
-    // 7. Work on a mutable copy of the current line:
     let line = lines[i];
 
-    // 8. For each keyword in your word list...
-    sqlKeywords.forEach(kw => {
-      // 9. Build a regex that matches the whole word, case‑insensitive:
-      //    \b anchors ensure we don’t accidentally match substrings.
-      const re = new RegExp(`\\b${kw}\\b`, 'gi');
+    // 4. Split line into segments: unquoted and quoted (single or double)
+    //    e.g. ['SELECT * ', "'foo bar'", ' WHERE ...']
+    const parts = line.split(/('.*?'|".*?")/g);
 
-      // 10. Replace all occurrences in the line with either the upper‑
-      //     or lower‑case version of the keyword.
-      line = line.replace(
-        re,
-        uppercase ? kw : kw.toLowerCase()
-      );
-    });
+    // 5. Process each segment
+    for (let j = 0; j < parts.length; j++) {
+      const segment = parts[j];
 
-    // 11. Create a TextEdit that replaces the entire original line
-    //     (from column 0 to its original length) with our new `line`:
+      // 5a. If segment is quoted (single or double)
+      if (
+        (segment.startsWith('"') && segment.endsWith('"')) ||
+        (segment.startsWith("'") && segment.endsWith("'"))
+      ) {
+        // Identify quote character
+        const quoteChar = segment[0];
+        // Remove outer quotes
+        const inner = segment.slice(1, -1);
+        // Split into words by whitespace
+        const words = inner.split(/\s+/);
+        // Reassemble each word wrapped in the same quote
+        parts[j] = words.map(w => `${quoteChar}${w}${quoteChar}`).join(' ');
+      } else {
+        // 5b. Unquoted segment: apply keyword casing
+        sqlKeywords.forEach(kw => {
+          // Match full word, case-insensitive
+          const re = new RegExp(`\\b${kw}\\b`, 'gi');
+          parts[j] = parts[j].replace(
+            re,
+            uppercase ? kw : kw.toLowerCase()
+          );
+        });
+      }
+    }
+
+    // 6. Re-join parts to form the new line
+    const newLine = parts.join('');
+
+    // 7. Create a TextEdit replacing the old line with the new one
     edits.push(
       TextEdit.replace(
         new Range(
-          new Position(i, 0),                   // start: this line, col 0
-          new Position(i, lines[i].length)      // end: this line, original end
+          new Position(i, 0),              // start at this line, column 0
+          new Position(i, lines[i].length) // end at original line length
         ),
-        line                                    // the replacement text
+        newLine
       )
     );
   }
 
-  // 12. Return all of our accumulated edits back to VS Code:
+  // 8. Return all computed edits
   return edits;
 }
