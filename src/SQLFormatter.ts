@@ -3,7 +3,8 @@
 /**
  * sqlFormatter module
  * Provides document formatting logic for T-SQL,
- * including keyword casing and handling quoted segments (single and double quotes).
+ * including keyword casing and handling quoted segments (single, double,
+ * and multi-line literals) across the entire document.
  */
 
 import { TextEdit, Range, Position } from 'vscode';
@@ -11,77 +12,67 @@ import { sqlKeywords } from './WordList';
 
 /**
  * Format the given SQL text, uppercasing keywords, splitting quoted strings
- * into individually quoted words, and preserving quoted literals.
+ * into individually quoted words, and preserving quoted literals even if
+ * they span multiple lines.
+ *
+ * This operates on the entire document as a single string, then issues
+ * a single TextEdit replacing the full range.
  *
  * @param text - the entire SQL document or selection text
  * @param uppercase - whether to uppercase SQL keywords (default: true)
  * @param indentSize - number of spaces per indent level (currently unused)
- * @returns an array of TextEdit objects describing replacements to apply
+ * @returns an array with one TextEdit describing the full-document replacement
  */
 export function formatDocument(
   text: string,
   uppercase: boolean = true,
   indentSize: number = 2
 ): TextEdit[] {
-  // 1. Prepare an array to collect all edits
-  const edits: TextEdit[] = [];
+  // 1. Split entire text into segments: quoted literals or unquoted text
+  //    Supports single or double quotes, including multi-line (using 's' flag)
+  const segments = text.split(/('(?:[^']|'')*'|"(?:[^"]|"")*")/gs);
 
-  // 2. Split document into lines (supports LF and CRLF)
-  const lines = text.split(/\r?\n/);
-
-  // 3. Iterate through each line
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-
-    // 4. Split line into segments: unquoted and quoted (single or double)
-    //    e.g. ['SELECT * ', "'foo bar'", ' WHERE ...']
-    const parts = line.split(/('.*?'|".*?")/g);
-
-    // 5. Process each segment
-    for (let j = 0; j < parts.length; j++) {
-      const segment = parts[j];
-
-      // 5a. If segment is quoted (single or double)
-      if (
-        (segment.startsWith('"') && segment.endsWith('"')) ||
-        (segment.startsWith("'") && segment.endsWith("'"))
-      ) {
-        // Identify quote character
-        const quoteChar = segment[0];
-        // Remove outer quotes
-        const inner = segment.slice(1, -1);
-        // Split into words by whitespace
-        const words = inner.split(/\s+/);
-        // Reassemble each word wrapped in the same quote
-        parts[j] = words.map(w => `${quoteChar}${w}${quoteChar}`).join(' ');
-      } else {
-        // 5b. Unquoted segment: apply keyword casing
-        sqlKeywords.forEach(kw => {
-          // Match full word, case-insensitive
-          const re = new RegExp(`\\b${kw}\\b`, 'gi');
-          parts[j] = parts[j].replace(
-            re,
-            uppercase ? kw : kw.toLowerCase()
-          );
-        });
-      }
+  // 2. Process each segment
+  const processed = segments.map(segment => {
+    // a) Quoted literal (single or double)
+    if (
+      (segment.startsWith("'") && segment.endsWith("'")) ||
+      (segment.startsWith('"') && segment.endsWith('"'))
+    ) {
+      const quoteChar = segment[0];
+      const inner = segment.slice(1, -1);
+      // Split into words by whitespace, re-wrap each word individually
+      return inner
+        .split(/\s+/)
+        .map(w => `${quoteChar}${w}${quoteChar}`)
+        .join(' ');
     }
 
-    // 6. Re-join parts to form the new line
-    const newLine = parts.join('');
+    // b) Unquoted segment: apply keyword casing
+    let out = segment;
+    sqlKeywords.forEach(kw => {
+      const re = new RegExp(`\\b${kw}\\b`, 'gi');
+      out = out.replace(re, uppercase ? kw : kw.toLowerCase());
+    });
+    return out;
+  });
 
-    // 7. Create a TextEdit replacing the old line with the new one
-    edits.push(
-      TextEdit.replace(
-        new Range(
-          new Position(i, 0),              // start at this line, column 0
-          new Position(i, lines[i].length) // end at original line length
-        ),
-        newLine
-      )
-    );
-  }
+  // 3. Reassemble the full formatted text
+  const newText = processed.join('');
 
-  // 8. Return all computed edits
-  return edits;
+  // 4. Compute original document full range
+  const lines = text.split(/\r?\n/);
+  const lastLine = lines.length - 1;
+  const lastChar = lines[lastLine].length;
+
+  // 5. Return a single TextEdit replacing the entire document
+  return [
+    TextEdit.replace(
+      new Range(
+        new Position(0, 0),
+        new Position(lastLine, lastChar)
+      ),
+      newText
+    )
+  ];
 }
