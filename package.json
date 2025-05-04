@@ -6,10 +6,17 @@
   "engines": {
     "vscode": "^1.99.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/muhammadbadar1998/sql-formatter-plus-3.0.git"
+  },
+  "homepage": "https://github.com/muhammadbadar1998/sql-formatter-plus-3.0",
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onCommand:sql-formatter-plus.format_sql"],
+  "activationEvents": [
+    "onCommand:sql-formatter-plus.format_sql"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
