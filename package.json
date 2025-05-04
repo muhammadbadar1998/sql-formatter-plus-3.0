@@ -2,7 +2,8 @@
   "name": "sql-formatter-plus",
   "displayName": "sql-formatter-plus",
   "description": "Formatter for SQL Server",
-  "version": "0.0.1",
+  "version": "3.0.0",
+  "publisher": "MuhammadBadar",
   "engines": {
     "vscode": "^1.99.0"
   },
