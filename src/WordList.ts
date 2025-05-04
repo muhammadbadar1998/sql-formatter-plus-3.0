@@ -400,4 +400,50 @@ export const sqlKeywords: string[] = [
   ];
   
 
-  
+// in WordList.ts
+
+// After these tokens, we want to bump the indent level:
+export const to_indent = [
+  "BEGIN",
+  "CASE",
+  "WHEN",
+  "THEN",
+  "ELSE",
+  "IF",
+  "WHILE",
+  "TRY",
+  "CATCH",
+  "LOOP",      // for PL/SQL
+  "("          // opening parenthesis for subqueries, function calls
+];
+
+// When we see any of these we break to a new line (and then indent to current level):
+export const new_line = [
+  ",",          // list separators
+  "SELECT",
+  "FROM",
+  "WHERE",
+  "JOIN",
+  "INNER JOIN",
+  "LEFT JOIN",
+  "RIGHT JOIN",
+  "FULL JOIN",
+  "CROSS JOIN",
+  "ON",
+  "GROUP BY",
+  "HAVING",
+  "ORDER BY",
+  "UNION",
+  "UNION ALL",
+  "EXCEPT",
+  "INTERSECT",
+  "INSERT",
+  "INTO",
+  "VALUES",
+  "UPDATE",
+  "SET",
+  "DELETE",
+  "MERGE",
+  "RETURNING",
+  "END"         // paired with BEGIN/CASE/etc.
+];

@@ -1,26 +1,29 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+// src/extension.ts
 import * as vscode from 'vscode';
+import { formatDocument } from './SQLFormatter';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  console.log('SQL Formatter Plus is now active!');
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "sql-formatter-plus" is now active!');
+  // Use registerTextEditorCommand to get the active editor & edit builder
+  const disposable = vscode.commands.registerTextEditorCommand(
+    'sql-formatter-plus.format_sql',
+    (editor, editBuilder) => {
+      const doc = editor.document;
+      const fullText = doc.getText();
+      // true = uppercase keywords, indentSize = 2 spaces
+      const textEdits = formatDocument(fullText, true, 2);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('sql-formatter-plus.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from sql-formatter-plus!');
-	});
+      // Apply each TextEdit returned by your formatter
+      textEdits.forEach(te => {
+        editBuilder.replace(te.range, te.newText);
+      });
+    }
+  );
 
-	context.subscriptions.push(disposable);
+  context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  // nothing to clean up
+}
