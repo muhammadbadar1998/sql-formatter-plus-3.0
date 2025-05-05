@@ -13,58 +13,47 @@ export function formatDocument(
   uppercase: boolean = true,
   indentSize: number = 2
 ): TextEdit[] {
-  // 1. Split entire text into segments: quoted/braced/bracket literals or unquoted text
-  const segments = text.split(
-    /('(?:[^']|'')*'|"(?:[^"]|"")*"|\{(?:[^{}]|{})*\}|\[(?:[^\[\]]|\[\])*\])/gs
-  );
+  // Split text into segments: literals or unquoted text
+  const segments = text.split(/('(?:[^']|'')*'|"(?:[^"]|"")*"|\{(?:[^{}]|{})*\}|\[[^\[\]]*\])/gs);
 
   let indentLevel = 0;
   let formatted = '';
 
-  // 2. Process each segment
-  segments.forEach(segment => {
-    // a) Quoted/braced/bracket literal: preserve inner words quoted
+  for (const segment of segments) {
+    const trimmed = segment.trim();
+    // Literal segments: append verbatim
     if (
-      (segment.startsWith("'") && segment.endsWith("'")) ||
-      (segment.startsWith('"') && segment.endsWith('"')) ||
-      (segment.startsWith('{') && segment.endsWith('}')) ||
-      (segment.startsWith('[') && segment.endsWith(']'))
+      (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))
     ) {
-      const quoteChar = segment[0];
-      const inner = segment.slice(1, -1);
-      formatted += inner
-        .split(/\s+/)
-        .map(w => `${quoteChar}${w}${quoteChar}`)
-        .join(' ');
-      return;
+      formatted += segment;
+      continue;
     }
 
-    // b) Unquoted segment: split into tokens by whitespace or punctuation
-    const tokens = segment.split(/(\s+|[^\w])/g).filter(Boolean);
-    tokens.forEach(token => {
-      const upper = uppercase ? token.toUpperCase() : token;
+    // Unquoted: split only on whitespace to keep punctuation intact
+    const parts = segment.split(/(\s+)/g).filter(Boolean);
+    for (const part of parts) {
+      const word = uppercase ? part.toUpperCase() : part;
 
-      // New line before certain tokens
-      if (new_line.includes(upper.trim())) {
+      if (new_line.includes(word.trim())) {
         formatted = formatted.trimEnd() + '\n' + ' '.repeat(indentLevel * indentSize);
       }
 
-      formatted += upper;
+      formatted += word;
 
-      // Increase indent after certain tokens
-      if (to_indent.includes(upper.trim())) {
+      if (to_indent.includes(word.trim())) {
         indentLevel++;
       }
 
-      // Decrease indent on END
-      if (upper.trim() === 'END') {
+      if (word.trim() === 'END') {
         indentLevel = Math.max(0, indentLevel - 1);
         formatted = formatted.trimEnd() + '\n' + ' '.repeat(indentLevel * indentSize);
       }
-    });
-  });
+    }
+  }
 
-  // Compute full document range
   const lines = text.split(/\r?\n/);
   const lastLine = lines.length - 1;
   const lastChar = lines[lastLine].length;
