@@ -1,29 +1,44 @@
-// src/extension.ts
 import * as vscode from 'vscode';
-import { formatDocument } from './SQLFormatter';
+import { formatSql, isSelectionSafe } from './SQLFormatter';
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('SQL Formatter Plus is now active!');
+	const disposable = vscode.commands.registerTextEditorCommand(
+		'sql-formatter-plus.format_sql',
+		(editor, editBuilder) => {
+			const selection = editor.selection;
+			const range = selection.isEmpty
+				? new vscode.Range(
+						new vscode.Position(0, 0),
+						editor.document.lineAt(editor.document.lineCount - 1).range.end
+					)
+				: selection;
+			const fullText = editor.document.getText();
+			if (
+				!selection.isEmpty &&
+				!isSelectionSafe(
+					fullText,
+					editor.document.offsetAt(selection.start),
+					editor.document.offsetAt(selection.end)
+				)
+			) {
+				return;
+			}
+			const original = editor.document.getText(range);
 
-  // Use registerTextEditorCommand to get the active editor & edit builder
-  const disposable = vscode.commands.registerTextEditorCommand(
-    'sql-formatter-plus.format_sql',
-    (editor, editBuilder) => {
-      const doc = editor.document;
-      const fullText = doc.getText();
-      // true = uppercase keywords, indentSize = 2 spaces
-      const textEdits = formatDocument(fullText, true, 2);
+			try {
+				const indentSize =
+					typeof editor.options.tabSize === 'number' ? editor.options.tabSize : 2;
+				const formatted = formatSql(original, { uppercase: true, indentSize });
+				if (formatted !== original) {
+					editBuilder.replace(range, formatted);
+				}
+			} catch (error) {
+				console.error('SQL Formatter Plus failed to format the document', error);
+			}
+		}
+	);
 
-      // Apply each TextEdit returned by your formatter
-      textEdits.forEach(te => {
-        editBuilder.replace(te.range, te.newText);
-      });
-    }
-  );
-
-  context.subscriptions.push(disposable);
+	context.subscriptions.push(disposable);
 }
 
-export function deactivate() {
-  // nothing to clean up
-}
+export function deactivate() {}

@@ -6,9 +6,12 @@ src/**
 .gitignore
 .yarnrc
 webpack.config.js
-vsc-extension-quickstart.md
+package-lock.json
+.vscode-test.mjs
 **/tsconfig.json
 **/eslint.config.mjs
 **/*.map
 **/*.ts
+**/*.test.*
 **/.vscode-test.*
+*.vsix
