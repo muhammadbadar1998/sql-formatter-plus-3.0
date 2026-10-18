@@ -5,6 +5,7 @@
 ### Fixed
 
 - Keep the existing Marketplace display name `sql-formatter-plus` so the update can be published under `MuhammadBadar.sql-formatter-plus`.
+- Updated development dependencies to resolve reported npm advisories.
 
 ## [3.1.0] - 2026-10-18
 

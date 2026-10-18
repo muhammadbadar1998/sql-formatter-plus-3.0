@@ -142,6 +142,8 @@ CREATE TABLE dbo.Audit (
 
 ## Development
 
+Node.js 22 or newer is required for the test toolchain.
+
 ```bash
 npm install
 npm test
